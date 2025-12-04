@@ -33,7 +33,7 @@ USE cs122a_project;
 ---
 
 ## 4. Set Your Own MySQL Password (IMPORTANT)
-Each teammate must edit these files *locally*:
+Each of us must edit these files *locally*:
 
 ### test_db.py
 Update this to your own MySQL username + password:
@@ -73,7 +73,6 @@ If you don't see this, check your password, MySQL server, and database name.
 ---
 
 ## 6. Running the Project (so far)
-We currently support the “import” function.
 
 Place your CSV folder in the repo:
 
