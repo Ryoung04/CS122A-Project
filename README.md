@@ -94,7 +94,7 @@ This drops tables, recreates them using ddl.sql, and loads all CSVs.
 
 ---
 
-## 7. Work Split (suggestion)
+## 7. Work Split 
 - Member 1: import function + schema
 - Member 2: insertAgentClient, addCustomizedModel, deleteBaseModel, listInternetService
 - Member 3: countCustomizedModel, topNDurationConfig, listBaseModelKeyWord, NL2SQL
