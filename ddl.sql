@@ -10,7 +10,7 @@ DROP TABLE IF EXISTS BaseModel;
 DROP TABLE IF EXISTS AgentClient;
 DROP TABLE IF EXISTS AgentCreator;
 DROP TABLE IF EXISTS User;
-C
+
 ------------------------------------------------------------
 -- Q1: User and Agent Creator/Client (Entities)
 ------------------------------------------------------------

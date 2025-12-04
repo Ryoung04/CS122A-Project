@@ -43,7 +43,9 @@ def import_data(folder):
         with open("ddl.sql", "r") as ddl_file:
             ddl_text = ddl_file.read()
         for stmt in ddl_text.split(";"):
-            if stmt.strip():
+            stmt = stmt.strip()
+            # Skip empty statements and USE statements
+            if stmt and not stmt.upper().startswith("USE"):
                 cursor.execute(stmt + ";")
 
         # Load all CSV files
