@@ -3,7 +3,7 @@ import mysql.connector
 conn = mysql.connector.connect(
     host="127.0.0.1",
     user="root",
-    password="Your Password Here",  # <-- change this
+    password="143Rjma!",  # <-- change this
     database="cs122a_project"
 )
 

@@ -1,0 +1,13 @@
+1,1,gpt-4
+1,2,claude-3-opus
+2,1,gpt-4-turbo
+3,2,claude-3-sonnet
+3,4,v1.2
+4,1,gpt-3.5-turbo
+5,3,gemini-pro
+5,5,standard
+6,1,gpt-4
+6,6,v5.0
+7,8,cohere-large
+8,2,claude-3-haiku
+8,7,v2.0

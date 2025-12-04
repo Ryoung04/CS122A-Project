@@ -1,0 +1,8 @@
+1,OpenAI,https://api.openai.com/v1
+2,Anthropic,https://api.anthropic.com/v1
+3,Google Cloud,https://cloud.google.com/vertex-ai
+4,AWS,https://aws.amazon.com/s3
+5,Azure,https://azure.microsoft.com/storage
+6,MongoDB,https://cloud.mongodb.com
+7,Pinecone,https://api.pinecone.io
+8,Cohere,https://api.cohere.ai
