@@ -14,7 +14,7 @@ def get_connection():
         host="localhost",
         user="test",
         password="password",
-        database="cs122a_project",
+        database="cs122a",
         allow_local_infile=True
     )
 """
