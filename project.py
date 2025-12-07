@@ -6,15 +6,28 @@ import mysql.connector
 # ------------------------------------------------------------
 # Database Connection Helper
 # ------------------------------------------------------------
+
+#use when submitting
+
+def get_connection():
+    return mysql.connector.connect(
+        host="localhost",
+        user="test",
+        password="password",
+        database="cs122a_project",
+        allow_local_infile=True
+    )
+"""
+
 def get_connection():
     return mysql.connector.connect(
         host="127.0.0.1",
         user="root",
-        password="password",   # <-- change this
+        password="password", #Change this for ur own device
         database="cs122a_project",
         allow_local_infile=True
     )
-
+"""
 # ------------------------------------------------------------
 # Function 1: Import Data
 # ------------------------------------------------------------
@@ -220,6 +233,37 @@ def listIS(value):
         if conn:
             conn.close()
 
+def countCM(values):
+    conn = None
+    cursor = None
+    try: 
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        placeholders = placeholders = ",".join(["%s"] * len(values))
+
+        sql = f"SELECT BM.bmid, BM.description, COUNT(CM.mid) FROM BaseModel AS BM LEFT JOIN CustomizedModel AS CM ON BM.bmid = CM.bmid WHERE BM.bmid IN ({placeholders}) GROUP BY BM.bmid, BM.description ORDER BY BM.bmid ASC"
+        cursor.execute(sql, values)
+        results = cursor.fetchall()
+        
+        for record in results:
+            output_line = ",".join(map(str, record))
+            print(output_line)
+
+    except mysql.connector.Error as e:
+        print(f"Fail {e}")
+        if conn:
+            conn.rollback()  
+    except Exception as e:
+        print("Fail")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+    
+
+
 # ------------------------------------------------------------
 # MAIN ROUTER
 # ------------------------------------------------------------
@@ -245,6 +289,9 @@ def main():
     elif cmd == "listInternetService":
         value = sys.argv[2]
         listIS(value)
+    elif cmd == "countCustomizedModel":
+        values = sys.argv[2:]
+        countCM(values)
     else:
         print("Fail")
 
