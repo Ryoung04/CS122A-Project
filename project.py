@@ -113,7 +113,6 @@ def import_data(folder):
 def insert_ac(values):
     conn = None
     cursor = None
-    success = False
     try: 
         conn = get_connection()
         cursor = conn.cursor()
@@ -129,7 +128,7 @@ def insert_ac(values):
         cursor.execute(sql, user_val)
         
         conn.commit()
-        success = True
+
         print("Success")
     except mysql.connector.Error as e:
         print("Fail")
@@ -142,12 +141,10 @@ def insert_ac(values):
             cursor.close()
         if conn:
             conn.close()
-    return success
 
 def add_customized_model(values):
     conn = None
     cursor = None
-    success = False
     try: 
         conn = get_connection()
         cursor = conn.cursor()
@@ -157,7 +154,6 @@ def add_customized_model(values):
         cursor.execute(sql, values)
         conn.commit()
         print("Success")
-        success = True
     except mysql.connector.Error as e:
         print("Fail")
         if conn:
@@ -169,15 +165,12 @@ def add_customized_model(values):
             cursor.close()
         if conn:
             conn.close()
-    
-    return success
 
 #Functino to delete basemodels 9BM
 
 def delete_BM(value):
     conn = None
     cursor = None
-    success = False
     try: 
         conn = get_connection()
         cursor = conn.cursor()
@@ -186,7 +179,6 @@ def delete_BM(value):
         cursor.execute(sql, (value,))
         conn.commit()
         print("Success")
-        success = True
     except mysql.connector.Error as e:
         print("Fail")
         if conn:
@@ -198,13 +190,11 @@ def delete_BM(value):
             cursor.close()
         if conn:
             conn.close()
-    
-    return success
+
 
 def listIS(value):
     conn = None
     cursor = None
-    success = False
     try: 
         conn = get_connection()
         cursor = conn.cursor()
@@ -213,10 +203,13 @@ def listIS(value):
         print(sql)
         cursor.execute(sql, (value,))
         results = cursor.fetchall()
-        print(results)
-        success = True
+        
+        for record in results:
+            output_line = ",".join(map(str, record))
+            print(output_line)
+
     except mysql.connector.Error as e:
-        print("Fail")
+        print(f"Fail {e}")
         if conn:
             conn.rollback()  
     except Exception as e:
@@ -226,8 +219,6 @@ def listIS(value):
             cursor.close()
         if conn:
             conn.close()
-    
-    return success
 
 # ------------------------------------------------------------
 # MAIN ROUTER
