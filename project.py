@@ -10,7 +10,7 @@ def get_connection():
     return mysql.connector.connect(
         host="127.0.0.1",
         user="root",
-        password="143Rjma!",   # <-- change this
+        password="password",   # <-- change this
         database="cs122a_project",
         allow_local_infile=True
     )
@@ -87,8 +87,11 @@ def import_data(folder):
                     reader = csv.reader(f)
                     for row in reader:
                         if row:  # Skip empty rows
+                            print(row)
+                            print(table_name)
                             placeholders = ",".join(["%s"] * len(row))
                             sql = f"INSERT INTO {table_name} VALUES ({placeholders})"
+                            print(sql)
                             cursor.execute(sql, row)
 
         conn.commit()
@@ -102,11 +105,135 @@ def import_data(folder):
         if conn:
             conn.close()
 
+#Function 2: Inseret Agent Client
+
+#NOTE FROM EDWARD:
+#TO CHECK ERRORS FROM SQL - PRINT E WHEN ERROR OCCURS!
+
+def insert_ac(values):
+    conn = None
+    cursor = None
+    success = False
+    try: 
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        #first gotta insert as a user
+        user_ph = ",".join(["%s"] * len(values[:3]))
+        user_sql = f"INSERT INTO User VALUES ({user_ph})"
+        cursor.execute(user_sql, values[:3])
+        #then we can insert as AC
+        placeholders = ",".join(["%s"] * (len(values[3:]) + 1))
+        sql = f"INSERT INTO AgentClient VALUES ({placeholders})"
+        user_val = values[0:1] + values[3:]
+        cursor.execute(sql, user_val)
+        
+        conn.commit()
+        success = True
+        print("Success")
+    except mysql.connector.Error as e:
+        print("Fail")
+        if conn:
+            conn.rollback()  
+    except Exception as e:
+        print("Fail")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+    return success
+
+def add_customized_model(values):
+    conn = None
+    cursor = None
+    success = False
+    try: 
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        placeholders = ",".join(["%s"] * len(values))
+        sql = f"INSERT INTO CustomizedModel VALUES ({placeholders})"
+        cursor.execute(sql, values)
+        conn.commit()
+        print("Success")
+        success = True
+    except mysql.connector.Error as e:
+        print("Fail")
+        if conn:
+            conn.rollback()  
+    except Exception as e:
+        print(f"Fail: {e}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+    
+    return success
+
+#Functino to delete basemodels 9BM
+
+def delete_BM(value):
+    conn = None
+    cursor = None
+    success = False
+    try: 
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        sql = "DELETE FROM BaseModel WHERE BMID = (%s)"
+        cursor.execute(sql, (value,))
+        conn.commit()
+        print("Success")
+        success = True
+    except mysql.connector.Error as e:
+        print("Fail")
+        if conn:
+            conn.rollback()  
+    except Exception as e:
+        print("Fail")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+    
+    return success
+
+def listIS(value):
+    conn = None
+    cursor = None
+    success = False
+    try: 
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        sql = "SELECT S.sid, S.provider, S.endpoint From InternetService AS S JOIN Utilize U ON U.sid = S.sid WHERE U.bmid = (%s) ORDER BY S.provider ASC"
+        print(sql)
+        cursor.execute(sql, (value,))
+        results = cursor.fetchall()
+        print(results)
+        success = True
+    except mysql.connector.Error as e:
+        print("Fail")
+        if conn:
+            conn.rollback()  
+    except Exception as e:
+        print("Fail")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+    
+    return success
+
 # ------------------------------------------------------------
 # MAIN ROUTER
 # ------------------------------------------------------------
 def main():
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 3:
         print("Fail")
         return
 
@@ -115,6 +242,18 @@ def main():
     if cmd == "import":
         folder = sys.argv[2]
         import_data(folder)
+    elif cmd == "insertAgentClient":
+        values = sys.argv[2:]
+        insert_ac(values)
+    elif cmd == "addCustomizedModel":
+        values = sys.argv[2:]
+        add_customized_model(values)
+    elif cmd == "deleteBaseModel":
+        value = sys.argv[2]
+        delete_BM(value)
+    elif cmd == "listInternetService":
+        value = sys.argv[2]
+        listIS(value)
     else:
         print("Fail")
 
