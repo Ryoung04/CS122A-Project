@@ -100,11 +100,8 @@ def import_data(folder):
                     reader = csv.reader(f)
                     for row in reader:
                         if row:  # Skip empty rows
-                            print(row)
-                            print(table_name)
                             placeholders = ",".join(["%s"] * len(row))
                             sql = f"INSERT INTO {table_name} VALUES ({placeholders})"
-                            print(sql)
                             cursor.execute(sql, row)
 
         conn.commit()
@@ -172,7 +169,7 @@ def add_customized_model(values):
         if conn:
             conn.rollback()  
     except Exception as e:
-        print(f"Fail: {e}")
+        print(f"Fail")
     finally:
         if cursor:
             cursor.close()
@@ -213,7 +210,6 @@ def listIS(value):
         cursor = conn.cursor()
 
         sql = "SELECT S.sid, S.provider, S.endpoint From InternetService AS S JOIN Utilize U ON U.sid = S.sid WHERE U.bmid = (%s) ORDER BY S.provider ASC"
-        print(sql)
         cursor.execute(sql, (value,))
         results = cursor.fetchall()
         
@@ -222,7 +218,7 @@ def listIS(value):
             print(output_line)
 
     except mysql.connector.Error as e:
-        print(f"Fail {e}")
+        print(f"Fail")
         if conn:
             conn.rollback()  
     except Exception as e:
@@ -251,7 +247,7 @@ def countCM(values):
             print(output_line)
 
     except mysql.connector.Error as e:
-        print(f"Fail {e}")
+        print(f"Fail")
         if conn:
             conn.rollback()  
     except Exception as e:
