@@ -78,7 +78,6 @@ def import_data(folder):
                     for row in reader:
                         if not row:
                             continue
-                        # --- AgentClient Transformation ---
                         if table_name == "AgentClient":
                             # Existing logic to reorder and format AgentClient data
                             try:
@@ -100,9 +99,7 @@ def import_data(folder):
                                 print(f"Fail: Missing data in AgentClient row: {row}")
                                 raise ie 
                         
-                        # --- BaseModel Transformation ---
                         elif table_name == "BaseModel":
-                            # Logic to truncate and reorder BaseModel data
                             try:
                                 csv_bmid = row[0]
                                 csv_creator_uid = row[1]
@@ -113,25 +110,19 @@ def import_data(folder):
                                 print(f"Fail: Missing data in BaseModel row: {row}")
                                 raise ie
 
-                        # --- Configuration Transformation (NEW FIX) ---
                         elif table_name == "Configuration":
-                            # DDL Order (inferred): [cid, content, labels, client_uid]
-                            # CSV Order: [cid, client_uid, content, labels]
                             try:
                                 # Extract fields
                                 csv_cid = row[0]
                                 csv_client_uid = row[1]
                                 csv_content = row[2]
                                 csv_labels = row[3]
-                                
-                                # Reorder to DDL: [cid, content, labels, client_uid]
                                 row = [csv_cid, csv_content, csv_labels, csv_client_uid]
                             except IndexError as ie:
                                 # This handles case where Configuration.csv has less than 4 fields
                                 print(f"Fail: Missing data in Configuration row: {row}")
                                 raise ie
                             
-                        # --- Insertion Logic with Debugging ---
                         try:
                             placeholders = ",".join(["%s"] * len(row))
                             sql = f"INSERT INTO {table_name} VALUES ({placeholders})"
@@ -140,7 +131,6 @@ def import_data(folder):
                             # Debugging print statement
                             print(f"!!! INSERTION FAILURE !!! Table: {table_name}, Data Fields: {len(row)}, Row Content: {row}")
                             raise insert_e
-                        # --- End Insertion Logic ---
 
         conn.commit()
         print("Success")
@@ -175,6 +165,10 @@ def insert_ac(values):
         conn = get_connection()
         cursor = conn.cursor()
         #move things from one value to a dedicated nnumber 
+        bmid = int(value)
+        sql = "SELECT S.sid, S.provider, S.endpoint From InternetService AS S JOIN Utilize U ON U.sid = S.sid WHERE U.bmid = (%s) ORDER BY S.provider ASC"
+        cursor.execute(sql, (bmid,)) 
+        results = cursor.fetchall()
         uid = int(values[0])
         username = values[1]
         email = values[2]
@@ -384,13 +378,15 @@ def listBaseModelKeyWord(keyword_value):
         cursor.execute(sql, (keyword,))
         results = cursor.fetchall()
 
-        # give us the output rows
-        for row in results:
-            bmid = row[0]
-            desc = str(row[1]).replace(",", "")
-            domain = row[2]
-            print(f"{bmid},{desc},{domain}")
-
+        # # give us the output rows
+        # for row in results:
+        #     bmid = row[0]
+        #     desc = str(row[1]).replace(",", "")
+        #     domain = row[2]
+        #     print(f"{bmid},{desc},{domain}")
+        for record in results: 
+            output_line = ",".join(map(str,record))
+            print(output_line)
     except mysql.connector.Error:
         print("Fail")
     except Exception:
@@ -430,6 +426,7 @@ def main():
         bmid_values = sys.argv[2:] 
         countCM(bmid_values)
     elif cmd == "topNdurationconfig": 
+        values = sys.argv[2:]
         topNdurationconfig(values)
     elif cmd == "listBaseModelKeyWord": 
         keyword_value = sys.argv[2:] 
