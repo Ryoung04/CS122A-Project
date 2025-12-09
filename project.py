@@ -363,6 +363,43 @@ def topNdurationconfig(values):
             conn.close()
 #part 8 Keyword search List 5 base models that are utilizing
 #def listBaseModelKeyWords(keyword_value):
+def get_list_base_model_sql(): #helper functions
+    return (
+        "SELECT BM.bmid, BM.description, L.domain "
+        "FROM BaseModel BM "
+        "JOIN ModelServices MS ON BM.bmid = MS.bmid "
+        "JOIN LLMService L ON MS.sid = L.sid "
+        "WHERE BM.description LIKE CONCAT('%%', %s, '%%') "
+        "ORDER BY BM.bmid ASC"
+    )
+
+def listBaseModelKeyWord(keyword_value):
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        keyword = keyword_value[0].strip()# Get the keyword 
+        sql = get_list_base_model_sql()
+        cursor.execute(sql, (keyword,))
+        results = cursor.fetchall()
+
+        # give us the output rows
+        for row in results:
+            bmid = row[0]
+            desc = str(row[1]).replace(",", "")
+            domain = row[2]
+            print(f"{bmid},{desc},{domain}")
+
+    except mysql.connector.Error:
+        print("Fail")
+    except Exception:
+        print("Fail")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 # ------------------------------------------------------------
 # MAIN ROUTER
@@ -394,6 +431,9 @@ def main():
         countCM(bmid_values)
     elif cmd == "topNdurationconfig": 
         topNdurationconfig(values)
+    elif cmd == "listBaseModelKeyWord": 
+        keyword_value = sys.argv[2:] 
+        listBaseModelKeyWord(keyword_value)
     else:
         print("Fail")
 
