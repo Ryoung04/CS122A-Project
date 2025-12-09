@@ -117,7 +117,8 @@ def import_data(folder):
                                 csv_client_uid = row[1]
                                 csv_content = row[2]
                                 csv_labels = row[3]
-                                row = [csv_cid, csv_content, csv_labels, csv_client_uid]
+                                row = [csv_cid, csv_client_uid, csv_content, csv_labels]
+                               # row = [csv_cid, csv_content, csv_labels, csv_client_uid]
                             except IndexError as ie:
                                 # This handles case where Configuration.csv has less than 4 fields
                                 print(f"Fail: Missing data in Configuration row: {row}")
@@ -173,7 +174,8 @@ def insert_ac(values):
         card_holder = values[4]
         expirationdate = values[5]
         ccv_num = values[6]
-        zipcode = int(values[7])
+
+        zipcode = values[7]
         interests = values[8]
 
         cardnumber = str(cardnum).zfill(16)
