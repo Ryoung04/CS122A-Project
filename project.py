@@ -165,10 +165,7 @@ def insert_ac(values):
         conn = get_connection()
         cursor = conn.cursor()
         #move things from one value to a dedicated nnumber 
-        bmid = int(value)
-        sql = "SELECT S.sid, S.provider, S.endpoint From InternetService AS S JOIN Utilize U ON U.sid = S.sid WHERE U.bmid = (%s) ORDER BY S.provider ASC"
-        cursor.execute(sql, (bmid,)) 
-        results = cursor.fetchall()
+        
         uid = int(values[0])
         username = values[1]
         email = values[2]
