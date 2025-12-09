@@ -211,7 +211,7 @@ def add_customized_model(values):
     try: 
         conn = get_connection()
         cursor = conn.cursor()
-        int_values = [int(v) for v in values]
+        int_values = [int(v) for v in values]#added to pass testcase
         placeholders = ",".join(["%s"] * len(values))
         sql = f"INSERT INTO CustomizedModel VALUES ({placeholders})"
         cursor.execute(sql, values)
@@ -329,7 +329,7 @@ def topNdurationconfig(values):
                 C.cid,
                 C.labels AS label,
                 C.content,
-                SUM(CUCM.usage_minutes) AS total_duration
+                SUM(CUCM.duration_seconds) AS total_duration
             FROM Configuration AS C
             JOIN Configuration_Uses_CustomizedModel AS CUCM ON C.cid = CUCM.cid
             WHERE C.client_uid = %s
@@ -342,6 +342,11 @@ def topNdurationconfig(values):
 
         for record in results:
             # Output will be uid,cid,label,content,duration
+            uid = str(record[0])
+            cid = str(record[1])
+            labels = str(record[2]).replace(",", "")
+            content = str(record[3]).replace(",", "")
+            duration = str(int(record[4])) # Ensures a clean integer string
             output_line = ",".join(map(str, record))
             print(output_line)
 
