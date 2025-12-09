@@ -264,7 +264,7 @@ def listIS(value):
         cursor = conn.cursor()
         bmid = int(value)
         sql = "SELECT S.sid, S.provider, S.endpoint From InternetService AS S JOIN Utilize U ON U.sid = S.sid WHERE U.bmid = (%s) ORDER BY S.provider ASC"
-        cursor.execute(sql, (value,))
+        cursor.execute(sql, (bmid,))
         results = cursor.fetchall()
         
         for record in results:
@@ -361,7 +361,7 @@ def get_list_base_model_sql(): #helper functions
         "JOIN ModelServices MS ON BM.bmid = MS.bmid "
         "JOIN LLMService L ON MS.sid = L.sid "
         "WHERE BM.description LIKE CONCAT('%%', %s, '%%') "
-        "ORDER BY BM.bmid ASC"
+        "ORDER BY BM.bmid ASC LIMIT 5"
     )
 
 def listBaseModelKeyWord(keyword_value):
