@@ -175,9 +175,10 @@ def insert_ac(values):
         expirationdate = values[5]
         ccv_num = values[6]
         zipcode = int(values[7])
+
+        cardnumber = str(cardnum).zfill(16)
+        cvvnumber = str(ccv_num).zfill(4)
         
-
-
         #first gotta insert as a user
         user_ph = ",".join(["%s"] * len(values[:3]))
         user_sql = f"INSERT INTO User VALUES ({user_ph})"
@@ -343,16 +344,17 @@ def topNdurationconfig(values):
             output_line = ",".join(map(str, record))
             print(output_line)
 
-    # except mysql.connector.Error as e:
-    #     print("Fail") #trouble shoot
-    # except Exception as e:
-    #     print("Fail") #trouble shoot
+    except mysql.connector.Error as e:
+         print("Fail") #trouble shoot
+    except Exception as e:
+         print("Fail") #trouble shoot
     finally:
         if cursor:
             cursor.close()
         if conn:
             conn.close()
-
+#part 8 Keyword search List 5 base models that are utilizing
+def listBaseModelKeyWords(keyword_value):
 
 # ------------------------------------------------------------
 # MAIN ROUTER
@@ -382,6 +384,8 @@ def main():
     elif cmd == "countCustomizedModel":
         bmid_values = sys.argv[2:] 
         countCM(bmid_values)
+    elif cmd == "topNdurationconfig": 
+        topNdurationconfig(values)
     else:
         print("Fail")
 
