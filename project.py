@@ -230,9 +230,12 @@ def delete_BM(value):
         cursor = conn.cursor()
 
         sql = "DELETE FROM BaseModel WHERE BMID = (%s)"
-        cursor.execute(sql, (value,))
-        conn.commit()
-        print("Success")
+        cursor.execute(sql, (int(value),))
+        if cursor.rowcount >0:
+            conn.commit()
+            print("Success")
+        else: 
+            print("Fail")
     except mysql.connector.Error as e:
         print("Fail")
         if conn:
