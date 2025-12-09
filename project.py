@@ -17,8 +17,8 @@ def get_connection():
         database="cs122a",
         allow_local_infile=True
     )
-"""
 
+"""
 def get_connection():
     return mysql.connector.connect(
         host="127.0.0.1",
@@ -28,69 +28,43 @@ def get_connection():
         allow_local_infile=True
     )
 """
-# ------------------------------------------------------------
-# Function 1: Import Data
-# ------------------------------------------------------------
+#  Import Data 
 def import_data(folder):
     conn = None
     cursor = None
     try:
         conn = get_connection()
         cursor = conn.cursor()
-
-        # Drop tables in correct foreign-key order
         drop_order = [
-            "Configuration_Uses_CustomizedModel",
-            "Utilize",
-            "LLMService",
-            "DataStorageService",
-            "InternetService",
-            "Configuration",
-            "CustomizedModel",
-            "BaseModel",
-            "AgentClient",
-            "AgentCreator",
-            "User"
+            "Configuration_Uses_CustomizedModel", "Utilize", "LLMService", "DataStorageService", 
+            "InternetService", "Configuration", "CustomizedModel", "BaseModel", 
+            "AgentClient", "AgentCreator", "User"
         ]
         for table in drop_order:
             cursor.execute(f"DROP TABLE IF EXISTS {table};")
-
-        # Recreate tables by reading ddl.sql
         with open("ddl.sql", "r") as ddl_file:
             sql_content = ddl_file.read()
         
-        # Remove comment lines
+        # DDL parsing (kept for completeness)
         lines = sql_content.split('\n')
         cleaned_lines = []
         for line in lines:
-            # Skip lines that are pure comments or empty
             stripped = line.strip()
             if stripped and not stripped.startswith('--'):
                 cleaned_lines.append(line)
-        
         cleaned_sql = '\n'.join(cleaned_lines)
         
-        # Split by semicolon and execute each statement
         statements = cleaned_sql.split(';')
         for stmt in statements:
             stmt = stmt.strip()
-            # Skip empty, USE, and DROP statements
             if stmt and not stmt.upper().startswith('USE') and not stmt.upper().startswith('DROP'):
                 cursor.execute(stmt)
 
-        # Load CSV files in correct foreign-key order
+        # Load CSV
         load_order = [
-            "User",
-            "AgentCreator",
-            "AgentClient",
-            "BaseModel",
-            "CustomizedModel",
-            "Configuration",
-            "InternetService",
-            "LLMService",
-            "DataStorageService",
-            "Utilize",
-            "Configuration_Uses_CustomizedModel"
+            "User", "AgentCreator", "AgentClient", "BaseModel", "CustomizedModel", 
+            "Configuration", "InternetService", "LLMService", "DataStorageService", 
+            "Utilize", "Configuration_Uses_CustomizedModel"
         ]
         
         for table_name in load_order:
@@ -98,23 +72,89 @@ def import_data(folder):
             if os.path.exists(csv_path):
                 with open(csv_path, "r") as f:
                     reader = csv.reader(f)
+                    
+                    header = next(reader) # Skip header
+                    
                     for row in reader:
-                        if row:  # Skip empty rows
+                        if not row:
+                            continue
+                        # --- AgentClient Transformation ---
+                        if table_name == "AgentClient":
+                            # Existing logic to reorder and format AgentClient data
+                            try:
+                                csv_uid = row[0]
+                                csv_interests = row[1]
+                                csv_cardholder = row[2]
+                                csv_expire = row[3]
+                                csv_cardno = row[4]
+                                csv_cvv = row[5]
+                                csv_zip = row[6]
+                                month_year = f"{csv_expire[5:7]}/{csv_expire[2:4]}"
+                                padded_cardno = str(csv_cardno).zfill(16)
+                                padded_cvv = str(csv_cvv).zfill(4)
+                                row = [
+                                    csv_uid, padded_cardno, csv_cardholder, 
+                                    month_year, padded_cvv, csv_zip, csv_interests
+                                ]
+                            except IndexError as ie:
+                                print(f"Fail: Missing data in AgentClient row: {row}")
+                                raise ie 
+                        
+                        # --- BaseModel Transformation ---
+                        elif table_name == "BaseModel":
+                            # Logic to truncate and reorder BaseModel data
+                            try:
+                                csv_bmid = row[0]
+                                csv_creator_uid = row[1]
+                                csv_description = row[2]
+                                # DDL Order: [bmid, description, creator_uid]
+                                row = [csv_bmid, csv_description, csv_creator_uid]
+                            except IndexError as ie:
+                                print(f"Fail: Missing data in BaseModel row: {row}")
+                                raise ie
+
+                        # --- Configuration Transformation (NEW FIX) ---
+                        elif table_name == "Configuration":
+                            # DDL Order (inferred): [cid, content, labels, client_uid]
+                            # CSV Order: [cid, client_uid, content, labels]
+                            try:
+                                # Extract fields
+                                csv_cid = row[0]
+                                csv_client_uid = row[1]
+                                csv_content = row[2]
+                                csv_labels = row[3]
+                                
+                                # Reorder to DDL: [cid, content, labels, client_uid]
+                                row = [csv_cid, csv_content, csv_labels, csv_client_uid]
+                            except IndexError as ie:
+                                # This handles case where Configuration.csv has less than 4 fields
+                                print(f"Fail: Missing data in Configuration row: {row}")
+                                raise ie
+                            
+                        # --- Insertion Logic with Debugging ---
+                        try:
                             placeholders = ",".join(["%s"] * len(row))
                             sql = f"INSERT INTO {table_name} VALUES ({placeholders})"
                             cursor.execute(sql, row)
+                        except Exception as insert_e:
+                            # Debugging print statement
+                            print(f"!!! INSERTION FAILURE !!! Table: {table_name}, Data Fields: {len(row)}, Row Content: {row}")
+                            raise insert_e
+                        # --- End Insertion Logic ---
 
         conn.commit()
         print("Success")
 
     except Exception as e:
         print("Fail")
+        print(f"Error Details: {e}") 
+        if conn:
+            conn.rollback()
     finally:
         if cursor:
             cursor.close()
         if conn:
             conn.close()
-
 #Function 2: Inseret Agent Client
 
 #NOTE FROM EDWARD:
@@ -126,6 +166,10 @@ def insert_ac(values):
     try: 
         conn = get_connection()
         cursor = conn.cursor()
+        #move things from one value to a dedicated nnumber 
+        uid = int(values[0])
+        username = values[1]
+        email = values[2]
 
         #first gotta insert as a user
         user_ph = ",".join(["%s"] * len(values[:3]))
@@ -257,7 +301,47 @@ def countCM(values):
             cursor.close()
         if conn:
             conn.close()
-    
+#now for part 7 
+def topNdurationconfig(values):
+    conn = None
+    cursor = None
+    try: 
+        conn = get_connection()
+        cursor = conn.cursor()
+        uid = int(values[0])
+        N= int(values[1])
+        
+        sql = """
+            SELECT
+                C.client_uid AS uid,
+                C.cid,
+                C.labels AS label,
+                C.content,
+                SUM(CUCM.usage_minutes) AS total_duration
+            FROM Configuration AS C
+            JOIN Configuration_Uses_CustomizedModel AS CUCM ON C.cid = CUCM.cid
+            WHERE C.client_uid = %s
+            GROUP BY C.client_uid, C.cid, C.labels, C.content
+            ORDER BY total_duration DESC
+            LIMIT %s;
+        """        
+        cursor.execute(sql,(uid, N))
+        results = cursor.fetchall()
+
+        for record in results:
+            # Output will be uid,cid,label,content,duration
+            output_line = ",".join(map(str, record))
+            print(output_line)
+
+    # except mysql.connector.Error as e:
+    #     print("Fail") #trouble shoot
+    # except Exception as e:
+    #     print("Fail") #trouble shoot
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 
 # ------------------------------------------------------------
@@ -286,8 +370,8 @@ def main():
         value = sys.argv[2]
         listIS(value)
     elif cmd == "countCustomizedModel":
-        values = sys.argv[2:]
-        countCM(values)
+        bmid_values = sys.argv[2:] 
+        countCM(bmid_values)
     else:
         print("Fail")
 
