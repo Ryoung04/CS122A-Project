@@ -159,7 +159,15 @@ def import_data(folder):
 
 #NOTE FROM EDWARD:
 #TO CHECK ERRORS FROM SQL - PRINT E WHEN ERROR OCCURS!
+def get_user_insert_sql():
+    return "INSERT INTO User (uid, email, username) VALUES (%s, %s, %s)"
 
+def get_ac_insert_sql():
+    return (
+        "INSERT INTO AgentClient "
+        "(uid, card_number, card_holder_name, expiration_date, cvv, zip, interests) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    )
 def insert_ac(values):
     conn = None
     cursor = None
@@ -175,22 +183,22 @@ def insert_ac(values):
         expirationdate = values[5]
         ccv_num = values[6]
         zipcode = int(values[7])
+        interests = values[8]
 
         cardnumber = str(cardnum).zfill(16)
         cvvnumber = str(ccv_num).zfill(4)
-        
-        #first gotta insert as a user
-        user_ph = ",".join(["%s"] * len(values[:3]))
-        user_sql = f"INSERT INTO User VALUES ({user_ph})"
-        cursor.execute(user_sql, values[:3])
-        #then we can insert as AC
-        placeholders = ",".join(["%s"] * (len(values[3:]) + 1))
-        sql = f"INSERT INTO AgentClient VALUES ({placeholders})"
-        user_val = values[0:1] + values[3:]
-        cursor.execute(sql, user_val)
-        
+        year, month, _ = expirationdate.split('-')
+        month_year = f"{month}/{year[2:]}"
+        cursor.execute(
+            get_user_insert_sql(),
+            (uid, email, username)
+        )
+        #now for agent client: 
+        cursor.execute(
+            get_ac_insert_sql(),
+            (uid, cardnumber, card_holder, month_year, cvvnumber, zipcode, interests)
+        )
         conn.commit()
-
         print("Success")
     except mysql.connector.Error as e:
         print("Fail")
@@ -354,7 +362,7 @@ def topNdurationconfig(values):
         if conn:
             conn.close()
 #part 8 Keyword search List 5 base models that are utilizing
-def listBaseModelKeyWords(keyword_value):
+#def listBaseModelKeyWords(keyword_value):
 
 # ------------------------------------------------------------
 # MAIN ROUTER
