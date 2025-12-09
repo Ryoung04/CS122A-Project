@@ -265,10 +265,21 @@ def listIS(value):
         conn = get_connection()
         cursor = conn.cursor()
         bmid = int(value)
-        sql = "SELECT S.sid, S.provider, S.endpoint From InternetService AS S JOIN Utilize U ON U.sid = S.sid WHERE U.bmid = (%s) ORDER BY S.provider ASC"
+        
         cursor.execute(sql, (bmid,))
         results = cursor.fetchall()
-        
+        sql = """
+            (SELECT U.sid, L.domain AS provider, U.version AS endpoint
+            FROM Utilize AS U
+            JOIN LLMService AS L ON U.sid = L.sid
+            WHERE U.bmid = %s)
+            UNION
+            (SELECT U.sid, D.type AS provider, U.version AS endpoint
+            FROM Utilize AS U
+            JOIN DataStorageService AS D ON U.sid = D.sid
+            WHERE U.bmid = %s)
+            ORDER BY provider ASC
+        """
         for record in results:
             output_line = ",".join(map(str, record))
             print(output_line)
