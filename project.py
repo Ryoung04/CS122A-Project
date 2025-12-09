@@ -211,7 +211,7 @@ def add_customized_model(values):
     try: 
         conn = get_connection()
         cursor = conn.cursor()
-
+        int_values = [int(v) for v in values]
         placeholders = ",".join(["%s"] * len(values))
         sql = f"INSERT INTO CustomizedModel VALUES ({placeholders})"
         cursor.execute(sql, values)
