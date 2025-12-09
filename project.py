@@ -170,6 +170,13 @@ def insert_ac(values):
         uid = int(values[0])
         username = values[1]
         email = values[2]
+        cardnum = values[3]
+        card_holder = values[4]
+        expirationdate = values[5]
+        ccv_num = values[6]
+        zipcode = int(values[7])
+        
+
 
         #first gotta insert as a user
         user_ph = ",".join(["%s"] * len(values[:3]))
