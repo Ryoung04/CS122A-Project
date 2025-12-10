@@ -26,7 +26,7 @@ def get_connection():
     return mysql.connector.connect(
         host="127.0.0.1",
         user="root",
-        password="whyulookingatmypassword!", #Change this for ur own device
+        password="Fortnite321!", #Change this for ur own device
         database="cs122a",
         allow_local_infile=True
     )
@@ -296,6 +296,90 @@ def countCM(values):
             cursor.close()
         if conn:
             conn.close()
+
+def topN(values):
+    conn = None
+    cursor = None
+    try: 
+        conn = get_connection()
+        cursor = conn.cursor()
+        sqla = "SELECT AC.uid, C.cid, C.labels, C.content, MC.duration FROM AgentClient AS AC JOIN Configuration AS C ON AC.uid = C.client_uid JOIN ModelConfigurations AS MC ON C.cid = MC.cid WHERE AC.uid = %s ORDER BY MC.duration DESC LIMIT %s"
+        sql = sqla % tuple(values)
+        
+        cursor.execute(sql)
+
+        results = cursor.fetchall()
+        if results:
+            for record in results:
+                output_line = ",".join(map(str, record))
+                print(output_line)
+            
+        else:
+            print("Fail")
+
+    except mysql.connector.Error as e:
+        #print(f"Fail {e}")
+        print("Fail")
+        if conn:
+            conn.rollback()  
+    except Exception as e:
+        print("Fail")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+def keysearch(values):
+    conn = None
+    cursor = None
+    try: 
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        sql = """SELECT BM.bmid, LS.sid, I.provider, LS.domain FROM BaseModel as BM JOIN ModelServices AS MS ON BM.bmid = MS.bmid JOIN InternetService AS I ON MS.sid = I.sid JOIN LLMService AS LS ON I.sid = LS.sid WHERE LS.domain LIKE %s ORDER BY BM.bmid ASC LIMIT 5;"""
+        search_term = f"%{values}%"
+        cursor.execute(sql, (search_term,))
+
+        results = cursor.fetchall()
+        if results != None:
+            for record in results:
+                output_line = ",".join(map(str, record))
+                print(output_line)
+            
+        else:
+            print("Fail")
+
+
+    except mysql.connector.Error as e:
+        #print(f"Fail {e}")
+        print("Fail")
+        if conn:
+            conn.rollback()  
+    except Exception as e:
+        print("Fail")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+def q9():
+    
+    #The first "error_name" column is called had_data because for the second question,
+    #neither query returned an answer, just empty columns of SID, but the other two 
+    #successfully returned the right tables (first one did not have the frequency column)
+
+    csv_path = "llmanswers.csv"
+    with open(csv_path,"r") as f:
+        reader = csv.reader(f)
+        for row in reader:
+            output = "NLquery_id: %s, NLquery: %s, LLM_model_name: %s, LLM_returned_SQL_id: %s, LLM_returned_SQL_query: %s, SQL_correct: %s, had_data: %s"
+            output_this = output % tuple(row)
+            print(output_this)
+            
+
     
 
 
@@ -304,8 +388,9 @@ def countCM(values):
 # ------------------------------------------------------------
 def main():
     if len(sys.argv) < 3:
-        print("Fail")
-        return
+        if (sys.argv[1] == "printNL2SQLresult"):
+            q9()
+            return
 
     cmd = sys.argv[1]
 
@@ -327,6 +412,12 @@ def main():
     elif cmd == "countCustomizedModel":
         values = sys.argv[2:]
         countCM(values)
+    elif cmd == "topNDurationConfig":
+        values = sys.argv[2:]
+        topN(values)
+    elif cmd == "listBaseModelKeyWord":
+        values = sys.argv[2]
+        keysearch(values)
     else:
         print("Fail")
 
