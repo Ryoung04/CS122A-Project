@@ -8,7 +8,9 @@ import mysql.connector
 # ------------------------------------------------------------
 
 #use when submitting
+#Github Repo: https://github.com/Ryoung04/CS122A-Project
 
+#"""
 def get_connection():
     return mysql.connector.connect(
         host="localhost",
@@ -17,17 +19,18 @@ def get_connection():
         database="cs122a",
         allow_local_infile=True
     )
-"""
+
+    """
 
 def get_connection():
     return mysql.connector.connect(
         host="127.0.0.1",
         user="root",
-        password="password", #Change this for ur own device
-        database="cs122a_project",
+        password="whyulookingatmypassword!", #Change this for ur own device
+        database="cs122a",
         allow_local_infile=True
     )
-"""
+    #"""
 # ------------------------------------------------------------
 # Function 1: Import Data
 # ------------------------------------------------------------
@@ -38,45 +41,32 @@ def import_data(folder):
         conn = get_connection()
         cursor = conn.cursor()
 
-        # Drop tables in correct foreign-key order
         drop_order = [
-            "Configuration_Uses_CustomizedModel",
-            "Utilize",
-            "LLMService",
-            "DataStorageService",
-            "InternetService",
-            "Configuration",
-            "CustomizedModel",
-            "BaseModel",
-            "AgentClient",
-            "AgentCreator",
-            "User"
+            "ModelConfigurations", "ModelServices", "LLMService", "DataStorage", 
+            "InternetService", "Configuration", "CustomizedModel", "BaseModel", 
+            "AgentClient", "AgentCreator", "User"
         ]
         for table in drop_order:
             cursor.execute(f"DROP TABLE IF EXISTS {table};")
-
-        # Recreate tables by reading ddl.sql
         with open("ddl.sql", "r") as ddl_file:
             sql_content = ddl_file.read()
-        
-        # Remove comment lines
+
         lines = sql_content.split('\n')
         cleaned_lines = []
         for line in lines:
-            # Skip lines that are pure comments or empty
             stripped = line.strip()
+    
             if stripped and not stripped.startswith('--'):
                 cleaned_lines.append(line)
-        
+
         cleaned_sql = '\n'.join(cleaned_lines)
-        
-        # Split by semicolon and execute each statement
         statements = cleaned_sql.split(';')
+
         for stmt in statements:
             stmt = stmt.strip()
-            # Skip empty, USE, and DROP statements
-            if stmt and not stmt.upper().startswith('USE') and not stmt.upper().startswith('DROP'):
-                cursor.execute(stmt)
+            if stmt:
+                cursor.execute(stmt) 
+
 
         # Load CSV files in correct foreign-key order
         load_order = [
@@ -88,9 +78,9 @@ def import_data(folder):
             "Configuration",
             "InternetService",
             "LLMService",
-            "DataStorageService",
-            "Utilize",
-            "Configuration_Uses_CustomizedModel"
+            "DataStorage",
+            "ModelServices",
+            "ModelConfigurations"
         ]
         
         for table_name in load_order:
@@ -98,6 +88,7 @@ def import_data(folder):
             if os.path.exists(csv_path):
                 with open(csv_path, "r") as f:
                     reader = csv.reader(f)
+                    header = next(reader) #skip ts
                     for row in reader:
                         if row:  # Skip empty rows
                             placeholders = ",".join(["%s"] * len(row))
@@ -108,6 +99,9 @@ def import_data(folder):
         print("Success")
 
     except Exception as e:
+        #For debugging, do not submit
+        print(f"Fail {e}")
+        #Submit ts
         print("Fail")
     finally:
         if cursor:
@@ -126,25 +120,42 @@ def insert_ac(values):
     try: 
         conn = get_connection()
         cursor = conn.cursor()
+        #Input: UID username email -user
+        #  Cardnumber Cardholder Expire CVV ZIP INT
+        
+        id = values[0]
+        find_id = f"SELECT COUNT(*) FROM User WHERE uid = {id}"
+        cursor.execute(find_id)
+        result = cursor.fetchone()
+        if (result[0] == 0): #means no UID
+            print(f"Fail")
+            return
 
-        #first gotta insert as a user
+        """
         user_ph = ",".join(["%s"] * len(values[:3]))
         user_sql = f"INSERT INTO User VALUES ({user_ph})"
         cursor.execute(user_sql, values[:3])
-        #then we can insert as AC
+#then we can insert as AC 
+#Do not use this since according to TAs, if you do not already have the UID in users
+#you do not insert regardless of if you can add
+        """
+#In order of uid interests cardholder expire cardno cvv zip
         placeholders = ",".join(["%s"] * (len(values[3:]) + 1))
         sql = f"INSERT INTO AgentClient VALUES ({placeholders})"
-        user_val = values[0:1] + values[3:]
+        #0 is uid 8 = interest, 4-6 = cardholder + expire 3-4 is cardno, 6-8 is cvv zip
+        user_val = values[0:1] + values[8:] + values[4:6] + values[3:4] + values[6:8]
         cursor.execute(sql, user_val)
-        
+
         conn.commit()
 
         print("Success")
     except mysql.connector.Error as e:
+        #print(f"Fail {e}")
         print("Fail")
         if conn:
             conn.rollback()  
     except Exception as e:
+        #print(f"Fail ex {e}")
         print("Fail")
     finally:
         if cursor:
@@ -159,16 +170,27 @@ def add_customized_model(values):
         conn = get_connection()
         cursor = conn.cursor()
 
-        placeholders = ",".join(["%s"] * len(values))
-        sql = f"INSERT INTO CustomizedModel VALUES ({placeholders})"
-        cursor.execute(sql, values)
-        conn.commit()
-        print("Success")
+        bmid = values[1]
+        find_bmid = f"SELECT COUNT(*) FROM BaseModel WHERE bmid = {bmid}"
+        cursor.execute(find_bmid)
+        result = cursor.fetchone()
+        if (result[0] == 0): #means no bmid in the list
+            print("Fail")
+        else:
+
+            placeholders = ",".join(["%s"] * len(values))
+            sql = f"INSERT INTO CustomizedModel VALUES ({placeholders})"
+            reverse = values[1:] + values[0:1]
+            cursor.execute(sql, reverse)
+            conn.commit()
+            print("Success")
     except mysql.connector.Error as e:
+        print(f"Fail {e}")
         print("Fail")
         if conn:
             conn.rollback()  
     except Exception as e:
+        #print(f"Fail ex {e}")
         print(f"Fail")
     finally:
         if cursor:
@@ -181,19 +203,26 @@ def add_customized_model(values):
 def delete_BM(value):
     conn = None
     cursor = None
-    try: 
+    try:
+
         conn = get_connection()
         cursor = conn.cursor()
 
         sql = "DELETE FROM BaseModel WHERE BMID = (%s)"
+
         cursor.execute(sql, (value,))
-        conn.commit()
-        print("Success")
+        if cursor.rowcount > 0:
+            conn.commit()
+            print("Success")
+        else: 
+            print("Fail")
     except mysql.connector.Error as e:
+        #print(f"{e}")
         print("Fail")
         if conn:
             conn.rollback()  
     except Exception as e:
+        #print(f"Failed {e}")
         print("Fail")
     finally:
         if cursor:
@@ -209,19 +238,24 @@ def listIS(value):
         conn = get_connection()
         cursor = conn.cursor()
 
-        sql = "SELECT S.sid, S.provider, S.endpoint From InternetService AS S JOIN Utilize U ON U.sid = S.sid WHERE U.bmid = (%s) ORDER BY S.provider ASC"
+        sql = "SELECT S.sid, S.endpoints, S.provider From InternetService AS S JOIN ModelServices U ON U.sid = S.sid WHERE U.bmid = (%s) ORDER BY S.provider ASC"
         cursor.execute(sql, (value,))
         results = cursor.fetchall()
-        
-        for record in results:
-            output_line = ",".join(map(str, record))
-            print(output_line)
+        if results != None:
+            for record in results:
+                output_line = ",".join(map(str, record))
+                print(output_line)
+            
+        else:
+            print("Fail")
 
     except mysql.connector.Error as e:
+        print(f"Fail {e}")
         print(f"Fail")
         if conn:
             conn.rollback()  
     except Exception as e:
+        print(f"Fail ex {e}")
         print("Fail")
     finally:
         if cursor:
@@ -241,10 +275,15 @@ def countCM(values):
         sql = f"SELECT BM.bmid, BM.description, COUNT(CM.mid) FROM BaseModel AS BM LEFT JOIN CustomizedModel AS CM ON BM.bmid = CM.bmid WHERE BM.bmid IN ({placeholders}) GROUP BY BM.bmid, BM.description ORDER BY BM.bmid ASC"
         cursor.execute(sql, values)
         results = cursor.fetchall()
+        if results != None:
         
-        for record in results:
-            output_line = ",".join(map(str, record))
-            print(output_line)
+            for record in results:
+                output_line = ",".join(map(str, record))
+                print(output_line)
+        
+           
+        else:
+            print("Fail")
 
     except mysql.connector.Error as e:
         print(f"Fail")
