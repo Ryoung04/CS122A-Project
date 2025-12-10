@@ -135,9 +135,7 @@ def insert_ac(values):
         user_ph = ",".join(["%s"] * len(values[:3]))
         user_sql = f"INSERT INTO User VALUES ({user_ph})"
         cursor.execute(user_sql, values[:3])
-#then we can insert as AC 
-#Do not use this since according to TAs, if you do not already have the UID in users
-#you do not insert regardless of if you can add
+
         """
 #In order of uid interests cardholder expire cardno cvv zip
         placeholders = ",".join(["%s"] * (len(values[3:]) + 1))
@@ -303,7 +301,7 @@ def topN(values):
     try: 
         conn = get_connection()
         cursor = conn.cursor()
-        sqla = "SELECT AC.uid, C.cid, C.labels, C.content, MC.duration FROM AgentClient AS AC JOIN Configuration AS C ON AC.uid = C.client_uid JOIN ModelConfigurations AS MC ON C.cid = MC.cid WHERE AC.uid = %s ORDER BY MC.duration DESC LIMIT %s"
+        sqla = "SELECT AC.uid, C.cid, C.labels, C.content, MAX(MC.duration) AS max_duration FROM AgentClient AS AC JOIN Configuration AS C ON AC.uid = C.client_uid JOIN ModelConfigurations AS MC ON C.cid = MC.cid WHERE AC.uid = %s GROUP BY AC.uid, C.cid, C.labels, C.content ORDER BY max_duration DESC LIMIT %s"
         sql = sqla % tuple(values)
         
         cursor.execute(sql)
