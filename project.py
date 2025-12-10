@@ -8,7 +8,9 @@ import mysql.connector
 # ------------------------------------------------------------
 
 #use when submitting
+#Github Repo: https://github.com/Ryoung04/CS122A-Project
 
+#"""
 def get_connection():
     return mysql.connector.connect(
         host="localhost",
@@ -18,25 +20,29 @@ def get_connection():
         allow_local_infile=True
     )
 
-"""
+    """
+
 def get_connection():
     return mysql.connector.connect(
         host="127.0.0.1",
         user="root",
         password="password", #Change this for ur own device
-        database="cs122a_project",
+        database="cs122a",
         allow_local_infile=True
     )
-"""
-#  Import Data 
+    #"""
+# ------------------------------------------------------------
+# Function 1: Import Data
+# ------------------------------------------------------------
 def import_data(folder):
     conn = None
     cursor = None
     try:
         conn = get_connection()
         cursor = conn.cursor()
+
         drop_order = [
-            "Configuration_Uses_CustomizedModel", "Utilize", "LLMService", "DataStorageService", 
+            "ModelConfigurations", "ModelServices", "LLMService", "DataStorage", 
             "InternetService", "Configuration", "CustomizedModel", "BaseModel", 
             "AgentClient", "AgentCreator", "User"
         ]
@@ -44,27 +50,37 @@ def import_data(folder):
             cursor.execute(f"DROP TABLE IF EXISTS {table};")
         with open("ddl.sql", "r") as ddl_file:
             sql_content = ddl_file.read()
-        
-        # DDL parsing (kept for completeness)
+
         lines = sql_content.split('\n')
         cleaned_lines = []
         for line in lines:
             stripped = line.strip()
+    
             if stripped and not stripped.startswith('--'):
                 cleaned_lines.append(line)
+
         cleaned_sql = '\n'.join(cleaned_lines)
-        
         statements = cleaned_sql.split(';')
+
         for stmt in statements:
             stmt = stmt.strip()
-            if stmt and not stmt.upper().startswith('USE') and not stmt.upper().startswith('DROP'):
-                cursor.execute(stmt)
+            if stmt:
+                cursor.execute(stmt) 
 
-        # Load CSV
+
+        # Load CSV files in correct foreign-key order
         load_order = [
-            "User", "AgentCreator", "AgentClient", "BaseModel", "CustomizedModel", 
-            "Configuration", "InternetService", "LLMService", "DataStorageService", 
-            "Utilize", "Configuration_Uses_CustomizedModel"
+            "User",
+            "AgentCreator",
+            "AgentClient",
+            "BaseModel",
+            "CustomizedModel",
+            "Configuration",
+            "InternetService",
+            "LLMService",
+            "DataStorage",
+            "ModelServices",
+            "ModelConfigurations"
         ]
         
         for table_name in load_order:
@@ -72,132 +88,74 @@ def import_data(folder):
             if os.path.exists(csv_path):
                 with open(csv_path, "r") as f:
                     reader = csv.reader(f)
-                    
-                    header = next(reader) # Skip header
-                    
+                    header = next(reader) #skip ts
                     for row in reader:
-                        if not row:
-                            continue
-                        if table_name == "AgentClient":
-                            # Existing logic to reorder and format AgentClient data
-                            try:
-                                csv_uid = row[0]
-                                csv_interests = row[1]
-                                csv_cardholder = row[2]
-                                csv_expire = row[3]
-                                csv_cardno = row[4]
-                                csv_cvv = row[5]
-                                csv_zip = row[6]
-                                month_year = f"{csv_expire[5:7]}/{csv_expire[2:4]}"
-                                padded_cardno = str(csv_cardno).zfill(16)
-                                padded_cvv = str(csv_cvv).zfill(4)
-                                row = [
-                                    csv_uid, padded_cardno, csv_cardholder, 
-                                    month_year, padded_cvv, csv_zip, csv_interests
-                                ]
-                            except IndexError as ie:
-                                print(f"Fail: Missing data in AgentClient row: {row}")
-                                raise ie 
-                        
-                        elif table_name == "BaseModel":
-                            try:
-                                csv_bmid = row[0]
-                                csv_creator_uid = row[1]
-                                csv_description = row[2]
-                                # DDL Order: [bmid, description, creator_uid]
-                                row = [csv_bmid, csv_description, csv_creator_uid]
-                            except IndexError as ie:
-                                print(f"Fail: Missing data in BaseModel row: {row}")
-                                raise ie
-
-                        elif table_name == "Configuration":
-                            try:
-                                # Extract fields
-                                csv_cid = row[0]
-                                csv_client_uid = row[1]
-                                csv_content = row[2]
-                                csv_labels = row[3]
-                                row = [csv_cid, csv_client_uid, csv_content, csv_labels]
-                               # row = [csv_cid, csv_content, csv_labels, csv_client_uid]
-                            except IndexError as ie:
-                                # This handles case where Configuration.csv has less than 4 fields
-                                print(f"Fail: Missing data in Configuration row: {row}")
-                                raise ie
-                            
-                        try:
+                        if row:  # Skip empty rows
                             placeholders = ",".join(["%s"] * len(row))
                             sql = f"INSERT INTO {table_name} VALUES ({placeholders})"
                             cursor.execute(sql, row)
-                        except Exception as insert_e:
-                            # Debugging print statement
-                            print(f"!!! INSERTION FAILURE !!! Table: {table_name}, Data Fields: {len(row)}, Row Content: {row}")
-                            raise insert_e
 
         conn.commit()
         print("Success")
 
     except Exception as e:
+        #For debugging, do not submit
+        print(f"Fail {e}")
+        #Submit ts
         print("Fail")
-        print(f"Error Details: {e}") 
-        if conn:
-            conn.rollback()
     finally:
         if cursor:
             cursor.close()
         if conn:
             conn.close()
+
 #Function 2: Inseret Agent Client
 
 #NOTE FROM EDWARD:
 #TO CHECK ERRORS FROM SQL - PRINT E WHEN ERROR OCCURS!
-def get_user_insert_sql():
-    return "INSERT INTO User (uid, email, username) VALUES (%s, %s, %s)"
 
-def get_ac_insert_sql():
-    return (
-        "INSERT INTO AgentClient "
-        "(uid, card_number, card_holder_name, expiration_date, cvv, zip, interests) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s)"
-    )
 def insert_ac(values):
     conn = None
     cursor = None
     try: 
         conn = get_connection()
         cursor = conn.cursor()
-        #move things from one value to a dedicated nnumber 
+        #Input: UID username email -user
+        #  Cardnumber Cardholder Expire CVV ZIP INT
         
-        uid = int(values[0])
-        username = values[1]
-        email = values[2]
-        cardnum = values[3]
-        card_holder = values[4]
-        expirationdate = values[5]
-        ccv_num = values[6]
+        id = values[0]
+        find_id = f"SELECT COUNT(*) FROM User WHERE uid = {id}"
+        cursor.execute(find_id)
+        result = cursor.fetchone()
+        if (result[0] == 0): #means no UID
+            print(f"Fail")
+            return
 
-        zipcode = values[7]
-        interests = values[8]
+        """
+        user_ph = ",".join(["%s"] * len(values[:3]))
+        user_sql = f"INSERT INTO User VALUES ({user_ph})"
+        cursor.execute(user_sql, values[:3])
+#then we can insert as AC 
+#Do not use this since according to TAs, if you do not already have the UID in users
+#you do not insert regardless of if you can add
+        """
+#In order of uid interests cardholder expire cardno cvv zip
+        placeholders = ",".join(["%s"] * (len(values[3:]) + 1))
+        sql = f"INSERT INTO AgentClient VALUES ({placeholders})"
+        #0 is uid 8 = interest, 4-6 = cardholder + expire 3-4 is cardno, 6-8 is cvv zip
+        user_val = values[0:1] + values[8:] + values[4:6] + values[3:4] + values[6:8]
+        cursor.execute(sql, user_val)
 
-        cardnumber = str(cardnum).zfill(16)
-        cvvnumber = str(ccv_num).zfill(4)
-        year, month, _ = expirationdate.split('-')
-        month_year = f"{month}/{year[2:]}"
-        cursor.execute(
-            get_user_insert_sql(),
-            (uid, email, username)
-        )
-        #now for agent client: 
-        cursor.execute(
-            get_ac_insert_sql(),
-            (uid, cardnumber, card_holder, month_year, cvvnumber, zipcode, interests)
-        )
         conn.commit()
+
         print("Success")
     except mysql.connector.Error as e:
+        #print(f"Fail {e}")
         print("Fail")
         if conn:
             conn.rollback()  
     except Exception as e:
+        #print(f"Fail ex {e}")
         print("Fail")
     finally:
         if cursor:
@@ -211,17 +169,28 @@ def add_customized_model(values):
     try: 
         conn = get_connection()
         cursor = conn.cursor()
-        int_values = [int(v) for v in values]#added to pass testcase
-        placeholders = ",".join(["%s"] * len(values))
-        sql = f"INSERT INTO CustomizedModel VALUES ({placeholders})"
-        cursor.execute(sql, values)
-        conn.commit()
-        print("Success")
+
+        bmid = values[1]
+        find_bmid = f"SELECT COUNT(*) FROM BaseModel WHERE bmid = {bmid}"
+        cursor.execute(find_bmid)
+        result = cursor.fetchone()
+        if (result[0] == 0): #means no bmid in the list
+            print("Fail")
+        else:
+
+            placeholders = ",".join(["%s"] * len(values))
+            sql = f"INSERT INTO CustomizedModel VALUES ({placeholders})"
+            reverse = values[1:] + values[0:1]
+            cursor.execute(sql, reverse)
+            conn.commit()
+            print("Success")
     except mysql.connector.Error as e:
+        print(f"Fail {e}")
         print("Fail")
         if conn:
             conn.rollback()  
     except Exception as e:
+        #print(f"Fail ex {e}")
         print(f"Fail")
     finally:
         if cursor:
@@ -234,22 +203,26 @@ def add_customized_model(values):
 def delete_BM(value):
     conn = None
     cursor = None
-    try: 
+    try:
+
         conn = get_connection()
         cursor = conn.cursor()
 
         sql = "DELETE FROM BaseModel WHERE BMID = (%s)"
-        cursor.execute(sql, (int(value),))
-        if cursor.rowcount >0:
+
+        cursor.execute(sql, (value,))
+        if cursor.rowcount > 0:
             conn.commit()
             print("Success")
         else: 
             print("Fail")
     except mysql.connector.Error as e:
+        #print(f"{e}")
         print("Fail")
         if conn:
             conn.rollback()  
     except Exception as e:
+        #print(f"Failed {e}")
         print("Fail")
     finally:
         if cursor:
@@ -264,31 +237,25 @@ def listIS(value):
     try: 
         conn = get_connection()
         cursor = conn.cursor()
-        bmid = int(value)
-        
-        cursor.execute(sql, (bmid,))
+
+        sql = "SELECT S.sid, S.endpoints, S.provider From InternetService AS S JOIN ModelServices U ON U.sid = S.sid WHERE U.bmid = (%s) ORDER BY S.provider ASC"
+        cursor.execute(sql, (value,))
         results = cursor.fetchall()
-        sql = """
-            (SELECT U.sid, L.domain AS provider, U.version AS endpoint
-            FROM Utilize AS U
-            JOIN LLMService AS L ON U.sid = L.sid
-            WHERE U.bmid = %s)
-            UNION
-            (SELECT U.sid, D.type AS provider, U.version AS endpoint
-            FROM Utilize AS U
-            JOIN DataStorageService AS D ON U.sid = D.sid
-            WHERE U.bmid = %s)
-            ORDER BY provider ASC
-        """
-        for record in results:
-            output_line = ",".join(map(str, record))
-            print(output_line)
+        if results != None:
+            for record in results:
+                output_line = ",".join(map(str, record))
+                print(output_line)
+            
+        else:
+            print("Fail")
 
     except mysql.connector.Error as e:
+        print(f"Fail {e}")
         print(f"Fail")
         if conn:
             conn.rollback()  
     except Exception as e:
+        print(f"Fail ex {e}")
         print("Fail")
     finally:
         if cursor:
@@ -308,10 +275,15 @@ def countCM(values):
         sql = f"SELECT BM.bmid, BM.description, COUNT(CM.mid) FROM BaseModel AS BM LEFT JOIN CustomizedModel AS CM ON BM.bmid = CM.bmid WHERE BM.bmid IN ({placeholders}) GROUP BY BM.bmid, BM.description ORDER BY BM.bmid ASC"
         cursor.execute(sql, values)
         results = cursor.fetchall()
+        if results != None:
         
-        for record in results:
-            output_line = ",".join(map(str, record))
-            print(output_line)
+            for record in results:
+                output_line = ",".join(map(str, record))
+                print(output_line)
+        
+           
+        else:
+            print("Fail")
 
     except mysql.connector.Error as e:
         print(f"Fail")
@@ -324,101 +296,100 @@ def countCM(values):
             cursor.close()
         if conn:
             conn.close()
-#now for part 7 
-def topNdurationconfig(values):
+
+def topN(values):
     conn = None
     cursor = None
     try: 
         conn = get_connection()
         cursor = conn.cursor()
-        uid = int(values[0])
-        N= int(values[1])
-        
-        sql = """
-            SELECT
-                C.client_uid AS uid,
-                C.cid,
-                C.labels AS label,
-                C.content,
-                SUM(CUCM.duration_seconds) AS total_duration
-            FROM Configuration AS C
-            JOIN Configuration_Uses_CustomizedModel AS CUCM ON C.cid = CUCM.cid
-            WHERE C.client_uid = %s
-            GROUP BY C.client_uid, C.cid, C.labels, C.content
-            ORDER BY total_duration DESC
-            LIMIT %s;
-        """        
-        cursor.execute(sql,(uid, N))
-        results = cursor.fetchall()
+        limit = values[1]
+        sql = f"""SELECT AC.uid, C.cid, C.labels, C.content, MC.duration FROM AgentClient AS AC JOIN Configuration AS C ON AC.uid = C.client_uid JOIN ModelConfigurations AS MC ON C.cid = MC.cid WHERE AC.uid = %s ORDER BY MC.duration DESC LIMIT {limit}"""
+        cursor.execute(sql, (values[0],))
 
-        for record in results:
-            # Output will be uid,cid,label,content,duration
-            uid = str(record[0])
-            cid = str(record[1])
-            labels = str(record[2]).replace(",", "")
-            content = str(record[3]).replace(",", "")
-            duration = str(int(record[4])) # Ensures a clean integer string
-            output_line = ",".join(map(str, record))
-            print(output_line)
+        results = cursor.fetchall()
+        if results:
+            for record in results:
+                output_line = ",".join(map(str, record))
+                print(output_line)
+            
+        else:
+            print("Fail")
 
     except mysql.connector.Error as e:
-         print("Fail") #trouble shoot
+        #print(f"Fail {e}")
+        print("Fail")
+        if conn:
+            conn.rollback()  
     except Exception as e:
-         print("Fail") #trouble shoot
+        print("Fail")
     finally:
         if cursor:
             cursor.close()
         if conn:
             conn.close()
-#part 8 Keyword search List 5 base models that are utilizing
-#def listBaseModelKeyWords(keyword_value):
-def get_list_base_model_sql(): #helper functions
-    return (
-        "SELECT BM.bmid, BM.description, L.domain "
-        "FROM BaseModel BM "
-        "JOIN ModelServices MS ON BM.bmid = MS.bmid "
-        "JOIN LLMService L ON MS.sid = L.sid "
-        "WHERE BM.description LIKE CONCAT('%%', %s, '%%') "
-        "ORDER BY BM.bmid ASC LIMIT 5"
-    )
 
-def listBaseModelKeyWord(keyword_value):
+
+def keysearch(values):
     conn = None
     cursor = None
-    try:
+    try: 
         conn = get_connection()
         cursor = conn.cursor()
-        keyword = keyword_value[0].strip()# Get the keyword 
-        sql = get_list_base_model_sql()
-        cursor.execute(sql, (keyword,))
-        results = cursor.fetchall()
 
-        # # give us the output rows
-        # for row in results:
-        #     bmid = row[0]
-        #     desc = str(row[1]).replace(",", "")
-        #     domain = row[2]
-        #     print(f"{bmid},{desc},{domain}")
-        for record in results: 
-            output_line = ",".join(map(str,record))
-            print(output_line)
-    except mysql.connector.Error:
+        sql = """SELECT BM.bmid, LS.sid, I.provider, LS.domain FROM BaseModel as BM JOIN ModelServices AS MS ON BM.bmid = MS.bmid JOIN InternetService AS I ON MS.sid = I.sid JOIN LLMService AS LS ON I.sid = LS.sid WHERE LS.domain LIKE %s ORDER BY BM.bmid ASC LIMIT 5;"""
+        search_term = f"%{values}%";
+        cursor.execute(sql, (search_term,))
+
+        results = cursor.fetchall()
+        if results != None:
+            for record in results:
+                output_line = ",".join(map(str, record))
+                print(output_line)
+            
+        else:
+            print("Fail")
+
+
+    except mysql.connector.Error as e:
+        #print(f"Fail {e}")
         print("Fail")
-    except Exception:
+        if conn:
+            conn.rollback()  
+    except Exception as e:
         print("Fail")
     finally:
         if cursor:
             cursor.close()
         if conn:
             conn.close()
+
+def q9():
+    
+    #The first "error_name" column is called had_data because for the second question,
+    #neither query returned an answer, just empty columns of SID, but the other two 
+    #successfully returned the right tables (first one did not have the frequency column)
+
+    csv_path = "llmanswers.csv"
+    with open(csv_path,"r") as f:
+        reader = csv.reader(f)
+        for row in reader:
+            output = "NLquery_id: %s, NLquery: %s, LLM_model_name: %s, LLM_returned_SQL_id: %s, LLM_returned_SQL_query: %s, SQL_correct: %s, had_data: %s"
+            output_this = output % tuple(row)
+            print(output_this)
+            
+
+    
+
 
 # ------------------------------------------------------------
 # MAIN ROUTER
 # ------------------------------------------------------------
 def main():
     if len(sys.argv) < 3:
-        print("Fail")
-        return
+        if (sys.argv[1] == "printNL2SQLresult"):
+            q9()
+            return
 
     cmd = sys.argv[1]
 
@@ -438,14 +409,14 @@ def main():
         value = sys.argv[2]
         listIS(value)
     elif cmd == "countCustomizedModel":
-        bmid_values = sys.argv[2:] 
-        countCM(bmid_values)
-    elif cmd == "topNdurationconfig": 
         values = sys.argv[2:]
-        topNdurationconfig(values)
-    elif cmd == "listBaseModelKeyWord": 
-        keyword_value = sys.argv[2:] 
-        listBaseModelKeyWord(keyword_value)
+        countCM(values)
+    elif cmd == "topNDurationConfig":
+        values = sys.argv[2:]
+        topN(values)
+    elif cmd == "listBaseModelKeyWord":
+        values = sys.argv[2]
+        keysearch(values)
     else:
         print("Fail")
 
